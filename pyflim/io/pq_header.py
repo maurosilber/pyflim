@@ -1,99 +1,94 @@
 import struct
+from enum import IntFlag
 
 import numpy as np
 
-# format types in header file
-tyEmpty8 = 0xFFFF0008
-tyBool8 = 0x00000008
-tyInt8 = 0x10000008
-tyBitSet64 = 0x11000008
-tyColor8 = 0x12000008
-tyFloat8 = 0x20000008
-tyTDateTime = 0x21000008
-tyFloat8Array = 0x2001FFFF
-tyAnsiString = 0x4001FFFF
-tyWideString = 0x4002FFFF
-tyBinaryBlob = 0xFFFFFFFF
+
+class HeaderTypes(IntFlag):
+    """Format types in header file"""
+    empty8 = 0xFFFF0008
+    bool8 = 0x00000008
+    int8 = 0x10000008
+    bit_set64 = 0x11000008
+    color8 = 0x12000008
+    float8 = 0x20000008
+    datetime = 0x21000008
+    float8_array = 0x2001FFFF
+    ANSI_string = 0x4001FFFF
+    wide_string = 0x4002FFFF
+    binary_blob = 0xFFFFFFFF
 
 
-def read_header_ptu(fname):
+def read_header_ptu(path):
     """
-    load the header file of a .ptu file
+    Read header of a .ptu file.
     
     Parameters
     ----------
-    
-    fname: full path to .ptu file
-    
+    path : string or pathlib.Path
+        The file to read.
     
     Returns
-    --------
-    
-    header: header of the ptu file
-    
-    rec_start: file location where the TTTR information starts    
+    -------
+    header, records_start : dict, int
+        The header of the ptu file and file location where the TTTR information starts.
     """
 
-    f = open(fname, "rb")
-    s = f.read(16)
-    if s[:8].decode("utf-8").rstrip("\x00") != 'PQTTTR':
-        return None
+    def decode(s):
+        return s.decode('utf-8').rstrip('\x00')
 
-    header = dict()
-    header["Version"] = s[8:].decode("utf-8").rstrip("\x00")
+    with open(path, 'rb') as file:
+        s = file.read(16)
 
-    while True:
+        if decode(s[:8]) != 'PQTTTR':
+            raise ValueError("Not a .ptu file.")
 
-        s = f.read(48)
-        TagId = s[:32].decode("utf-8").rstrip("\x00")
-        TagIdx, TagTypeCode = struct.unpack("<iI", s[32:40])
+        header = {'Version': decode(s[8:])}
+        while True:
+            s = file.read(48)
+            tag_id = decode(s[:32])
+            tag_idx, tag_type_code = struct.unpack('<iI', s[32:40])
+            tag_name = tag_id + str(tag_idx) if tag_idx > -1 else tag_id
 
-        if TagIdx > -1:
-            TagName = TagId + str(TagIdx)
-        else:
-            TagName = TagId
+            if tag_type_code in (HeaderTypes.empty8, HeaderTypes.int8, HeaderTypes.bit_set64, HeaderTypes.color8):
+                tag_int = struct.unpack("<q", s[40:])[0]
+                header[tag_name] = tag_int
 
-        if TagTypeCode in (tyEmpty8, tyInt8, tyBitSet64, tyColor8):
-            TagInt = struct.unpack("<q", s[40:])[0]
-            header[TagName] = TagInt
+            elif tag_type_code == HeaderTypes.bool8:
+                tag_int = struct.unpack("<q", s[40:])[0]
+                header[tag_name] = bool(tag_int)
 
-        elif TagTypeCode == tyBool8:
-            TagInt = struct.unpack("<q", s[40:])[0]
-            header[TagName] = bool(TagInt)
+            elif tag_type_code == HeaderTypes.float8:
+                tag_int = struct.unpack("<d", s[40:])[0]
+                header[tag_name] = tag_int
 
-        elif TagTypeCode == tyFloat8:
-            TagInt = struct.unpack("<d", s[40:])[0]
-            header[TagName] = TagInt
+            elif tag_type_code == HeaderTypes.float8_array:
+                tag_int = struct.unpack("<q", s[40:])[0]
+                ss = file.read(tag_int)
+                header[tag_name] = struct.unpack("<" + (tag_int / 8) * "d", ss)
 
-        elif TagTypeCode == tyFloat8Array:
-            TagInt = struct.unpack("<q", s[40:])[0]
-            ss = f.read(TagInt)
-            header[TagName] = struct.unpack("<" + (TagInt / 8) * "d", ss)
+            elif tag_type_code == HeaderTypes.datetime:
+                tag_int = struct.unpack("<d", s[40:])[0]
+                header[tag_name] = tag_int
 
-        elif TagTypeCode == tyTDateTime:
-            TagInt = struct.unpack("<d", s[40:])[0]
-            header[TagName] = TagInt
+            elif tag_type_code in (HeaderTypes.ANSI_string, HeaderTypes.wide_string):
+                tag_int = struct.unpack("<q", s[40:])[0]
+                ss = file.read(tag_int)
+                if tag_name in ("$Comment", "File_Comment"): continue
+                header[tag_name] = decode(ss)
 
-        elif TagTypeCode in (tyAnsiString, tyWideString):
-            TagInt = struct.unpack("<q", s[40:])[0]
-            ss = f.read(TagInt)
-            if TagName in ("$Comment", "File_Comment"): continue
-            header[TagName] = ss.decode("utf-8").rstrip("\x00")
+            elif tag_type_code == HeaderTypes.binary_blob:
+                tag_int = struct.unpack("<q", s[40:])[0]
+                ss = file.read(tag_int)
+                header[tag_name] = ss
+            else:
+                raise
 
-        elif TagTypeCode == tyBinaryBlob:
-            TagInt = struct.unpack("<q", s[40:])[0]
-            ss = f.read(TagInt)
-            header[TagName] = ss
-        else:
-            raise
+            if tag_id == 'Header_End':
+                break
 
-        if TagId == 'Header_End':
-            break
-
-    rec_start = f.tell()
-    f.close()
-
-    return header, rec_start
+        records_start = file.tell()
+    return header, records_start
 
 
 def read_header_pt3(fname):
