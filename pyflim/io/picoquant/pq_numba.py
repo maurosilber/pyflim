@@ -1,7 +1,7 @@
 import numba as nb
 import numpy as np
 
-T3WRAPAROUND = 65536
+T3_WRAP_AROUND = 65536
 
 
 @nb.jit
@@ -15,29 +15,26 @@ def _bit_get(value, shift, length):
 
 
 @nb.njit
-def _read_events(records, nb_records, syncrate, resolution):
+def _read_events(records, num_records, syncrate, resolution):
     """
-    read the TTTR data from an array-like object
+    Read the TTTR data from an array-like object
     
     Parameters
     -----------
-    
-    records: an array like object over the uint32 records.
-    
-    nb_records: number of records in file.
-    
-    syncrate: synchronization rate in Hz.
-    
-    resolution: TAC resolution in s.
+    records: array_like
+        An array-like object over the uint32 records.
+    num_records: int
+        Number of records in file.
+    syncrate: int
+        Synchronization rate in Hz.
+    resolution: int
+        TAC resolution in s.
     
     Returns
     --------
-    
-    channel: int16 array
-    
-    dtime: int16 array
-    
-    truetime: double array
+    channel : int16 array
+    dtime : int16 array
+    truetime : double array
     """
 
     syncperiod = 1.0e9 / syncrate
@@ -45,45 +42,25 @@ def _read_events(records, nb_records, syncrate, resolution):
     truensync = 0.0
     event = 0
 
-    channels = np.empty(nb_records, dtype=np.int16)
-    dtimes = np.empty(nb_records, dtype=np.int16)
-    truetimes = np.empty(nb_records, dtype=np.double)
+    channels = np.empty(num_records, dtype=np.int16)
+    dtimes = np.empty(num_records, dtype=np.int16)
+    truetimes = np.empty(num_records, dtype=np.double)
 
-    for n in range(nb_records):
+    for n in range(num_records):
+        record = records[n]  # all 32 bits
+        nsync = _bit_get(record, 0, 16)  # lowest 16 bits
+        channel = _bit_get(record, 32 - 4, 4)  # upper 4 bits
 
-        # all 32 bits
-        #   +-------------------------------+  +-------------------------------+
-        #   |x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|  |x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|
-        #   +-------------------------------+  +-------------------------------+
-        record = records[n]
-
-        # lowest 16 bits.
-        #   +-------------------------------+  +-------------------------------+
-        #   | | | | | | | | | | | | | | | | |  |x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|x|
-        #   +-------------------------------+  +-------------------------------+
-        nsync = _bit_get(record, 0, 16)
-
-        # the upper 4 bits:
-        #   +-------------------------------+  +-------------------------------+
-        #   |x|x|x|x| | | | | | | | | | | | |  | | | | | | | | | | | | | | | | |
-        #   +-------------------------------+  +-------------------------------+
-        chan = _bit_get(record, 32 - 4, 4)
-        if chan == 15:
-            markers = _bit_get(record, 32 - 16, 4)
-            #   +-------------------------------+  +-------------------------------+
-            #   | | | | | | | | | | | | |x|x|x|x|  | | | | | | | | | | | | | | | | |
-            #   +-------------------------------+  +-------------------------------+
-            if markers == 0:
-                # Overflow
-                ofltime = ofltime + T3WRAPAROUND
+        if channel == 15:
+            markers = _bit_get(record, 32 - 16, 4)  # lowest 4 bits of the upper 16 bits
+            if markers == 0:  # Overflow
+                ofltime = ofltime + T3_WRAP_AROUND
                 continue
 
         dtime = _bit_get(record, 32 - 16, 12)
-
-        if 1 <= chan <= 4 or chan == 15:
-            # Photon or spatial marker event
+        if 1 <= channel <= 4 or channel == 15:  # Photon or spatial marker event
             truensync = 1.0 * ofltime + 1.0 * nsync
-            channels[event] = chan
+            channels[event] = channel
             dtimes[event] = dtime
             truetimes[event] = truensync * syncperiod + dtime * resolution
             event += 1
@@ -91,42 +68,30 @@ def _read_events(records, nb_records, syncrate, resolution):
     return channels[:event], dtimes[:event], truetimes[:event]
 
 
-def read_records(fname_or_fp, nb_records, offset, syncrate, resolution):
-    """
-    read records of a pt3/ptu file
+def read_records(file, num_records, offset, syncrate, resolution):
+    """Read records of a pt3/ptu file.
 
     Parameters
     ----------
-
-    fname_or_fp: full path to pt3/ptu file or file-like object.
-
-    nb_records: maximum number of records to be read.
-
-    offset: number of bytes to skip until the start of the records.
-
-    syncrate: synchronization rate in Hz.
-    
-    resolution: TAC resolution in s.
-
+    file : os.PathLike
+    num_records : int
+        Maximum number of records to be read.
+    offset : int
+        Number of bytes to skip until the start of the records.
+    syncrate : int
+        Synchronization rate in Hz.
+    resolution : int
+        TAC resolution in s.
 
     Returns
     -------
-
     channel: int16 array
-    
     dtime: int16 array
-    
     truetime: double array
     """
 
-    if isinstance(fname_or_fp, str):
-        with open(fname_or_fp, mode='rb') as fp:
-            read_records(fp, nb_records, offset, syncrate, resolution)
-
-    fp = fname_or_fp
-
-    records = np.memmap(fp, dtype='uint32', mode='r', offset=offset)
-    channels, dtimes, truetimes = _read_events(records, nb_records, syncrate, resolution)
+    records = np.memmap(file, dtype='uint32', mode='r', offset=offset)
+    channels, dtimes, truetimes = _read_events(records, num_records, syncrate, resolution)
 
     return channels, dtimes, truetimes
 
