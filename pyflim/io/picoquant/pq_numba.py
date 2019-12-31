@@ -134,7 +134,7 @@ def interpret_LSM(channel, dtime, truetime, pixX, pixY, lsm_frame,
     
     f: frame
     
-    d: dtime
+    dtime: dtime
     """
     nb_events = len(channel)
     x = np.empty(nb_events, dtype=np.int16)
@@ -227,7 +227,7 @@ def interpret_PI(channel, dtime, truetime, pixX, pixY, t_start_to, t_stop_to,
     
     f: frame
     
-    d: dtime
+    dtime: dtime
     """
 
     nb_events = len(channel)

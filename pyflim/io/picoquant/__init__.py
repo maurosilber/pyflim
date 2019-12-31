@@ -1,7 +1,7 @@
 from enum import Enum
 
 from . import pq_header, pq_numba as pq
-from ..functions import phasemod, _histogram
+from ..functions import histogram, fourier_image
 from ...flimds import UncorrectedFLIMds
 
 
@@ -16,8 +16,8 @@ class PTU(UncorrectedFLIMds):
         self.file = filename
 
         # Read header
-        self.header, self.recstart = pq_header.read_header_ptu(self.file)
-        self.nb_records = self.header[u'TTResult_NumberOfRecords']
+        self.header, self.records_start = pq_header.read_header_ptu(self.file)
+        self.num_records = self.header[u'TTResult_NumberOfRecords']
         self.syncrate = self.header['TTResult_SyncRate']
         self.resolution = self.header['MeasDesc_Resolution']
         self.pixX = self.header['ImgHdr_PixX']
@@ -33,39 +33,34 @@ class PTU(UncorrectedFLIMds):
         else:
             raise NotImplementedError
 
-        self.binrep = 1 / (self.resolution * self.syncrate)
+        self.TAC_period = 1 / (self.resolution * self.syncrate)
 
         # Load data
-        self.x, self.y, self.f, self.d = self.interpret_records(*self.read_records())
-        self.nb_of_photons = len(self.d)
+        self.x, self.y, self.f, self.dtime = self._interpret_records(*self._read_records())
+        self.num_TAC_bins = self.dtime.max() + 1
 
-    def read_records(self):
-        channel, dtime, truetime = pq.read_records(self.file, self.nb_records,
-                                                   self.recstart, self.syncrate, self.resolution)
+    def _read_records(self):
+        channel, dtime, truetime = pq.read_records(self.file, self.num_records, self.records_start,
+                                                   self.syncrate, self.resolution)
         return channel, dtime, truetime
 
-    def interpret_records(self, channel, dtime, truetime):
+    def _interpret_records(self, channel, dtime, truetime):
         if self.scanner == Scanner.PI_E710:
-            x, y, f, d = pq.interpret_PI(channel, dtime,
-                                         truetime, self.pixX, self.pixY, self.TStartTo,
-                                         self.TStopTo,
-                                         self.TStartFro, self.TStopFro, self.bidirect)
+            x, y, f, d = pq.interpret_PI(channel, dtime, truetime, self.pixX, self.pixY,
+                                         self.TStartTo, self.TStopTo, self.TStartFro, self.TStopFro, self.bidirect)
 
         elif self.scanner == Scanner.LSM:
-            x, y, f, d = pq.interpret_LSM(channel, dtime,
-                                          truetime, self.pixX, self.pixY, self.lsm_frame,
-                                          self.lsm_line_start, self.lsm_line_stop)
+            x, y, f, d = pq.interpret_LSM(channel, dtime, truetime, self.pixX, self.pixY,
+                                          self.lsm_frame, self.lsm_line_start, self.lsm_line_stop)
             return x, y, f, d
 
     @property
     def frequency(self):
         return self.syncrate
 
-    def histogram(self):
-        return _histogram(self.d.max(), self.d, self.x, self.y, (self.pixX, self.pixY))
+    def histogram(self, mask=None):
+        return histogram(self.dtime, self.x, self.y, self.num_TAC_bins, mask=mask)
 
-    def fourier_image(self, harm, binning=1):
-        if binning != 1:
-            return NotImplementedError
-        else:
-            return phasemod(self.d, self.x, self.y, self.d.max(), self.binrep, (self.pixX, self.pixY), harm=harm)
+    def fourier_image(self, harmonics, mask=None):
+        return fourier_image((self.pixY, self.pixX), harmonics, self.dtime, self.x, self.y,
+                             self.num_TAC_bins, self.TAC_period, mask=mask)

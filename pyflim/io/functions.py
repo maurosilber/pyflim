@@ -2,132 +2,111 @@ import numba as nb
 import numpy as np
 
 
-def phasemod(dtime, x, y, TACbins, TACrep, xydim, harm=0, image=True):
-    """
-    calculate complex coordinates
+def histogram(dtime, x, y, num_TAC_bins, mask=None):
+    """Compute the histogram of the measurement.
 
     Parameters
-    -----------
+    ----------
+    dtime, x, y: array_like
+        TAC bin, x and y coordinates of photons
+    num_TAC_bins : int
+        Number of bins with non-zero photons (dtime.max + 1)
+    mask : ndarray of bools of shape (y_dim, x_dim), optional
+        Image will be calculated only where mask == True.
+    """
+    hist = np.zeros(num_TAC_bins, dtype=int)
+    _histogram(hist, dtime, x, y, mask=mask)
+    return hist
 
-    dtime: TAC bin (int16 array)
 
-    x: x coordinates of photons (int16 array)
+def fourier_image(image_shape, harmonics, dtime, x, y, num_TAC_bins, TAC_period, mask=None):
+    """Compute complex fourier coefficients for every pixel in the image.
 
-    y: y coordinates of photons (int16 array)
-
-    TACbins: nb of bins with nonzero photons (dtime.max)
-
-    TACrep: nb of bins corresponding to time between laser pulses
-            (in theory should be the same as bins, but due to jitter in the laser
-            stability some photons can arrive later)
-
-    xydim: dimension of image
-
-    harm: number of harmonics to calculate
-
-    image: (bool) if True returns an image if False returns the average
-
+    Parameters
+    ----------
+    image_shape : tuple of ints (y_dim, x_dim)
+        Output image shape.
+    harmonics : array_like
+        Harmonics to compute.
+    dtime, x, y: array_like
+        TAC bin, x and y coordinates of photons
+    num_TAC_bins : int
+        Number of bins with non-zero photons (dtime.max + 1)
+    TAC_period : float
+        Number of bins corresponding to time between laser pulses.
+        In theory should be the same as bins, but due to jitter in
+        the laser stability some photons can arrive later.
+    mask : ndarray of bools of shape (y_dim, x_dim), optional
+        Image will be calculated only where mask == True.
 
     Returns
     -------
-
-    im: image stack of dimension [n+1, ydimensions, xdimensions]
-        or wave with dimensions [n+1]
-
+    image : ndarray of shape (num_harmonics, y_dim, x_dim)
     """
-    binsX, binsY = xydim
+    image = np.zeros((len(harmonics), *image_shape), dtype=complex)
+    _fourier_image(image, complex_exp(harmonics, num_TAC_bins, TAC_period), dtime, x, y, mask=mask)
+    return image
 
-    # create array with phase components
-    e = np.ones(((TACbins + 1), (harm + 1)), dtype=np.complex64)
-    xx = np.arange(TACbins + 1) * 2 * np.pi / TACrep
-    for h in range(1, harm + 1):
-        e[:, h] = np.exp(1j * xx * h)
 
-    if image:
-        im = np.zeros((harm + 1, binsY, binsX), dtype=np.complex64)
-        _image(im, TACbins, e, dtime, x, y, xydim, harm=harm)
+def complex_exp(harmonics, num_TAC_bins, TAC_period):
+    """Generate a matrix for calculation of Fourier coefficients.
+
+    Parameters
+    ----------
+    harmonics : array_like
+        Harmonics to compute.
+    num_TAC_bins : int
+        Number of bins with non-zero photons (dtime.max + 1)
+    TAC_period : float
+        Number of bins corresponding to time between laser pulses.
+        In theory should be the same as bins, but due to jitter in
+        the laser stability some photons can arrive later.
+
+    Returns
+    -------
+    """
+    harmonics = np.asarray(harmonics)
+    phi = np.arange(num_TAC_bins) * 2 * np.pi / TAC_period
+    return np.exp(1j * harmonics * phi[:, None])  # FLIM sign convention.
+
+
+@nb.njit
+def _fourier_image(image, complex_exp, dtime, x, y, mask=None):
+    """Numba-compiled function to compute fourier_image.
+
+    Parameters
+    ----------
+    image : complex ndarray of shape (num_harmonics, y_dim, x_dim)
+        Output image.
+    complex_exp : ndarray
+        Complex wave of dimensions (num_TAC_bins, num_harmonics)
+    """
+
+    num_harm = complex_exp.shape[1]
+    if mask is None:
+        for dt, xi, yi in zip(dtime, x, y):
+            for h in range(num_harm):
+                image[h, yi, xi] += complex_exp[dt, h]
     else:
-        hist = _histogram(TACbins, dtime, x, y, xydim).reshape(TACbins + 1, 1)
-        e *= hist
-        im = np.sum(e, axis=0)
-
-    return im
-
-
-@nb.njit
-def _image(im, TACbins, e, dtime, x, y, xydim, harm=0):
-    """
-    calculate the complex fourier coefficients for every pixel in the image
-
-    Parameters
-    -----------
-
-    im: image of shape [harm+1, ydimensions, xdimensions]
-
-    e: complex wave of dimensions [TACbins+1, harm+1]
-
-    dtime: TAC bin (int16 array)
-
-    x: x coordinates of photons (int16 array)
-
-    y: y coordinates of photons (int16 array)
-
-    xydim: dimension of image
-
-    harm: number of harmonics to calculate
-    """
-    binsX, binsY = xydim
-
-    events = len(dtime)
-
-    event_x = 0
-    event_y = 0
-    for event in range(events):
-        event_x = x[event]
-        event_y = y[event]
-        event_t = dtime[event]
-        for h in range(harm + 1):
-            if event_x < 0 or event_x >= binsX or event_y < 0 or event_y >= binsY:
-                continue
-            if event_t > TACbins: continue
-            im[h, event_y, event_x] += e[dtime[event], h]
+        for dt, xi, yi in zip(dtime, x, y):
+            if mask[yi, xi]:
+                for h in range(num_harm):
+                    image[h, yi, xi] += complex_exp[dt, h]
 
 
 @nb.njit
-def _histogram(TACbins, dtime, x, y, xydim):
-    """
-    calculate the complex fourier coefficients for the whole measurement
+def _histogram(hist, dtime, x, y, mask=None):
+    """Numba-compiled function to compute histogram.
 
     Parameters
-    -----------
-
-    im: complex array of len [harm+1]
-
-    e: complex wave of dimensions [TACbins+1, harm+1]
-
-    dtime: TAC bin (int16 array)
-
-    x: x coordinates of photons (int16 array)
-
-    y: y coordinates of photons (int16 array)
-
-    xydim: dimension of image
-
-    harm: number of harmonics to calculate
+    ----------
+    hist : ndarray of num_TAC_bins length
+        Output histogram.
     """
-    binsX, binsY = xydim
-    events = len(dtime)
-    event_x = 0
-    event_y = 0
-
-    hist = np.zeros(TACbins + 1, dtype=np.float32)
-    for event in range(events):
-        event_x = x[event]
-        event_y = y[event]
-        event_t = dtime[event]
-        if event_x < 0 or event_x >= binsX or event_y < 0 or event_y >= binsY:
-            continue
-        if event_t > TACbins: continue
-        hist[dtime[event]] += 1
-
-    return hist
+    if mask is None:
+        for dt in dtime:
+            hist[dt] += 1
+    else:
+        for dt, xi, yi in zip(dtime, x, y):
+            if mask[yi, xi]:
+                hist[dt] += 1
