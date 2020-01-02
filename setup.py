@@ -8,4 +8,5 @@ setup(
     license='MIT',
     author='Mauro Silberberg',
     author_email='maurosilber@gmail.com',
+    install_requires=['numpy', 'numba']
 )
