@@ -1,3 +1,5 @@
+"""Adapted from JediFLIM by Klaus Schuermann and tdflim by Peter Verveer."""
+
 from enum import Enum
 
 from . import pq_header, pq_numba as pq

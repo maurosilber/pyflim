@@ -4,6 +4,8 @@ __pycache__/
 # Distribution / packaging
 *.egg
 *.egg-info/
+build/
+dist/
 
 # PyCharm
 .idea

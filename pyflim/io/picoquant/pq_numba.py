@@ -1,3 +1,5 @@
+"""Adapted from JediFLIM by Klaus Schuermann and tdflim by Peter Verveer."""
+
 import numba as nb
 import numpy as np
 

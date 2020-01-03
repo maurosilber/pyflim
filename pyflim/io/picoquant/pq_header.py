@@ -1,3 +1,5 @@
+"""Adapted from JediFLIM by Klaus Schuermann and tdflim by Peter Verveer."""
+
 import struct
 from enum import IntFlag
 
