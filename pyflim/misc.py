@@ -13,3 +13,9 @@ def array_args(func):
         return func(*arrays, **kw_arrays)
 
     return wrapper
+
+
+def complex_to_real(x):
+    """Convert complex to 2D real vector."""
+
+    return x[..., None].view(float)
