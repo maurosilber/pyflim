@@ -12,7 +12,10 @@ def _phasor(N, R1, R2, **kwargs):
 
 
 def _phasor_covariance(N, R1, R2, N_thres=1):
-    cov = phasor_covariance(N, R1, R2, check_zero=False)
+    mask = N > 0
+    r1 = np.divide(R1, N, where=mask, out=np.zeros(np.broadcast(N, R1).shape, dtype=complex))
+    r2 = np.divide(R2, N, where=mask, out=np.zeros(np.broadcast(N, R2).shape, dtype=complex))
+    cov = phasor_covariance(N, r1, r2, check_zero=False)
     cov[N <= N_thres] = np.diag(np.inf * np.ones(2))  # Inverse equals 0.
     return cov
 
@@ -35,7 +38,7 @@ def pawflim(N, R1, R2, levels, p_value=0.05, N_thres=1, axes=None, mask=None):
     p_value : float, optional
         Controls the level of denoising. Default is 0.05.
     N_thres : float, optional
-        Pixels where N <= N_thres, pass the test and are binned.
+        Pixels where N <= N_thres, automatically pass the test and are binned.
 
     Returns
     -------

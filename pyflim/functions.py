@@ -54,15 +54,15 @@ def phasor_reference_correction(r, r_ref):
 
 
 @array_args
-def phasor_covariance(N, R1, R2, check_zero=True):
+def phasor_covariance(N, r1, r2, check_zero=True):
     """Compute phasor covariance matrix.
 
     Parameters
     ----------
     N : array_like
         Number of counts.
-    R1, R2 : array_like
-        Fourier harmonics n and 2n.
+    r1, r2 : array_like
+        Phasor harmonics n and 2n.
     check_zero : bool, optional
         Whether to check for N==0. If True, returns np.nan where N==0.
 
@@ -72,11 +72,11 @@ def phasor_covariance(N, R1, R2, check_zero=True):
     and uncertainty to enable lower photon count in FLIM experiments.
     Methods and applications in fluorescence, 5(2), 024016.
     """
-    shape = np.broadcast(N, R1, R2).shape
+    shape = np.broadcast(N, r1, r2).shape
     cov = np.empty(shape + (2, 2))
-    cov[..., 0, 0] = 1 + R2.real - 2 * R1.real ** 2
-    cov[..., 1, 1] = 1 - R2.real - 2 * R1.imag ** 2
-    cov[..., 0, 1] = cov[..., 1, 0] = R2.imag - 2 * R1.real * R1.imag
+    cov[..., 0, 0] = 1 + r2.real - 2 * r1.real ** 2
+    cov[..., 1, 1] = 1 - r2.real - 2 * r1.imag ** 2
+    cov[..., 0, 1] = cov[..., 1, 0] = r2.imag - 2 * r1.real * r1.imag
     cov = np.divide(cov, 2 * N[..., None, None], out=cov, where=N[..., None, None] > 0)
     if check_zero:
         cov[N == 0] = np.nan
