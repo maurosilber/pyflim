@@ -91,6 +91,17 @@ class UncorrectedFLIMds:
         return CorrectedFLIMds(self, irf, bg)
 
 
+class Constant(UncorrectedFLIMds):
+    def __init__(self, coeffs, harmonics=None):
+        if harmonics is None:
+            harmonics = range(len(coeffs))
+        self.coeffs = dict(zip(harmonics, coeffs))
+
+    def fourier_image(self, harmonics, mask=None):
+        return np.fromiter((self.coeffs[h] for h in harmonics),
+                           dtype=complex, count=len(harmonics))
+
+
 class CorrectedFLIMds:
     """An IRF and background-corrected FLIM dataset."""
 
