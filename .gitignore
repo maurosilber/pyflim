@@ -1,11 +1,12 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
+# Hidden files/directories
+.*
 
-# Distribution / packaging
-*.egg
-*.egg-info/
+# Python
+__pycache__
+*.pyc
+
+# Python packaging
+*egg-info*
 build/
 dist/
-
-# PyCharm
-.idea
+MANIFEST
