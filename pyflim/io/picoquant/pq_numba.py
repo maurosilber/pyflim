@@ -20,7 +20,7 @@ def _bit_get(value, shift, length):
 def _read_events(records, num_records, syncrate, resolution):
     """
     Read the TTTR data from an array-like object
-    
+
     Parameters
     -----------
     records: array_like
@@ -31,7 +31,7 @@ def _read_events(records, num_records, syncrate, resolution):
         Synchronization rate in Hz.
     resolution: int
         TAC resolution in s.
-    
+
     Returns
     --------
     channel : int16 array
@@ -92,50 +92,53 @@ def read_records(file, num_records, offset, syncrate, resolution):
     truetime: double array
     """
 
-    records = np.memmap(file, dtype='uint32', mode='r', offset=offset)
-    channels, dtimes, truetimes = _read_events(records, num_records, syncrate, resolution)
+    records = np.memmap(file, dtype="uint32", mode="r", offset=offset)
+    channels, dtimes, truetimes = _read_events(
+        records, num_records, syncrate, resolution
+    )
 
     return channels, dtimes, truetimes
 
 
 @nb.njit
-def interpret_LSM(channel, dtime, truetime, pixX, pixY, lsm_frame,
-                  lsm_line_start, lsm_line_stop):
+def interpret_LSM(
+    channel, dtime, truetime, pixX, pixY, lsm_frame, lsm_line_start, lsm_line_stop
+):
     """
     calculate the x, y position and the frame from truetime
-    
+
     Parameters
     ----------
-    
+
     channel: int16 array
-    
+
     dtime: int16 array
-    
+
     truetime: double array
-    
+
     pixX: pixels in x
-    
+
     pixY: pixels in Y
-    
+
     lsm_frame: marker for lsm frame
-    
+
     lsm_line_start: marker for lsm line start
-    
+
     lsm_line_stop: marker for lsm line stop
-    
-    x: empty numpy array 
-    
-    y: 
-    
+
+    x: empty numpy array
+
+    y:
+
     Returns
     --------
-    
+
     x: x coordinates of photons
-    
+
     y: y coordinates of photons
-    
+
     f: frame
-    
+
     dtime: dtime
     """
     nb_events = len(channel)
@@ -178,7 +181,7 @@ def interpret_LSM(channel, dtime, truetime, pixX, pixY, lsm_frame,
                     line = 0
             elif dtime[i] == lsm_line_stop:
                 line_started = False
-        elif line_started == False:
+        elif line_started is False:
             continue
         elif channel[i] > 0:
             x_pos = (truetime[i] - line_start) / line_time * 1.0 * (pixX - 1)
@@ -188,47 +191,62 @@ def interpret_LSM(channel, dtime, truetime, pixX, pixY, lsm_frame,
             dtime[events_in_range] = dtime[i]
             events_in_range += 1
 
-    return x[:events_in_range], y[:events_in_range], f[:events_in_range], dtime[:events_in_range]
+    return (
+        x[:events_in_range],
+        y[:events_in_range],
+        f[:events_in_range],
+        dtime[:events_in_range],
+    )
 
 
 @nb.njit
-def interpret_PI(channel, dtime, truetime, pixX, pixY, t_start_to, t_stop_to,
-                 t_start_fro, t_stop_fro, bidirect=False):
+def interpret_PI(
+    channel,
+    dtime,
+    truetime,
+    pixX,
+    pixY,
+    t_start_to,
+    t_stop_to,
+    t_start_fro,
+    t_stop_fro,
+    bidirect=False,
+):
     """
     calculate the x, y position and the frame from truetime
-    
+
     Parameters
     ----------
-    
+
     channel: int16 array
-    
+
     dtime: int16 array
-    
+
     truetime: double array
-    
+
     pixX: pixels in x
-    
+
     pixY: pixels in Y
-    
-    t_start_to: delay of start marker 
-    
+
+    t_start_to: delay of start marker
+
     t_stop_to: delay of stop marker
-    
+
     t_start_fro: delay of start marker (coming back - bidirectional)
-    
+
     t_stop_fro: delay of stop marker (coming back - bidirectional)
-    
+
     bidirect: bidirectional scanning, defaults to "False"
-    
+
     Returns
     --------
-    
+
     x: x coordinates of photons
-    
+
     y: y coordinates of photons
-    
+
     f: frame
-    
+
     dtime: dtime
     """
 
@@ -257,7 +275,7 @@ def interpret_PI(channel, dtime, truetime, pixX, pixY, t_start_to, t_stop_to,
                     line_start = -1
                 if bidirect:
                     scanning_to = not scanning_to
-    line_time /= (1.0 * lines)
+    line_time /= 1.0 * lines
     offset_to = 1.0 * t_start_to * line_time
     offset_fro = 1.0 * t_start_fro * line_time
     dwell_t_to = 1.0 * (t_stop_to - t_start_to) * line_time
@@ -280,7 +298,9 @@ def interpret_PI(channel, dtime, truetime, pixX, pixY, t_start_to, t_stop_to,
             if line > 0 and bidirect:
                 scanning_to = not scanning_to
             if scanning_to:
-                line_start = truetime[i]  # reverse scanning uses the previous trigger signal
+                line_start = truetime[
+                    i
+                ]  # reverse scanning uses the previous trigger signal
 
         elif channel[i] > 0:
             if scanning_to:
@@ -295,4 +315,9 @@ def interpret_PI(channel, dtime, truetime, pixX, pixY, t_start_to, t_stop_to,
                 dtime[events_in_range] = dtime[i]
                 events_in_range += 1
 
-    return x[:events_in_range], y[:events_in_range], f[:events_in_range], dtime[:events_in_range]
+    return (
+        x[:events_in_range],
+        y[:events_in_range],
+        f[:events_in_range],
+        dtime[:events_in_range],
+    )

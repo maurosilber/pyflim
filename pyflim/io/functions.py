@@ -19,7 +19,9 @@ def histogram(dtime, x, y, num_TAC_bins, mask=None):
     return hist
 
 
-def fourier_image(image_shape, harmonics, dtime, x, y, num_TAC_bins, TAC_period, mask=None):
+def fourier_image(
+    image_shape, harmonics, dtime, x, y, num_TAC_bins, TAC_period, mask=None
+):
     """Compute complex fourier coefficients for every pixel in the image.
 
     Parameters
@@ -44,7 +46,9 @@ def fourier_image(image_shape, harmonics, dtime, x, y, num_TAC_bins, TAC_period,
     image : ndarray of shape (num_harmonics, y_dim, x_dim)
     """
     image = np.zeros((len(harmonics), *image_shape), dtype=complex)
-    _fourier_image(image, complex_exp(harmonics, num_TAC_bins, TAC_period), dtime, x, y, mask=mask)
+    _fourier_image(
+        image, complex_exp(harmonics, num_TAC_bins, TAC_period), dtime, x, y, mask=mask
+    )
     return image
 
 

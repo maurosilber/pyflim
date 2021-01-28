@@ -16,7 +16,7 @@ def _exponential_rv(t, tau, T):
     return -tau * np.log(1 - t * (1 - np.exp(-T / tau)))
 
 
-## VER PARAMETRO N
+# VER PARAMETRO N
 def single_lifetime(tau, N, T):
     """Generate single exponential samples.
 

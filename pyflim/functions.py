@@ -85,6 +85,7 @@ def phasor_covariance(N, r1, r2, check_zero=True):
 
 # FRET functions
 
+
 @array_args
 def FRET_efficiency(radius, R0):
     """Compute FRET efficiency from radius for a given Förster radius R0."""
@@ -110,6 +111,7 @@ def FRET_lifetime(donor_lifetime, fret_efficiency):
 
 
 # Single exponential functions
+
 
 @array_args
 def phasor_from_lifetime(tau, freq=1):
@@ -177,6 +179,7 @@ def normal_lifetime(r, freq=1):
 
 # Bi-exponential functions
 
+
 def semicircle_intersection(coeffs):
     """Computes the intersection of a linear polynomial with the single-lifetime semicircle.
 
@@ -200,7 +203,9 @@ def semicircle_intersection(coeffs):
     a, b = coeffs
     disc = 1 - 4 * b * (a + b)
     if disc < 0:
-        raise ValueError('Discriminant < 0, there is no intersection with the semicircle.')
+        raise ValueError(
+            "Discriminant < 0, there is no intersection with the semicircle."
+        )
     else:
         disc = np.sqrt(disc)
         x = (1 - 2 * a * b + np.array([1, -1]) * disc) / (2 * (a ** 2 + 1))

@@ -1,7 +1,13 @@
 import numpy as np
 
-from .functions import phasor_from_lifetime, modulation_lifetime, phase_lifetime, normal_lifetime
-from .functions import photon_fraction, photon_to_molecular_fraction
+from .functions import (
+    modulation_lifetime,
+    normal_lifetime,
+    phase_lifetime,
+    phasor_from_lifetime,
+    photon_fraction,
+    photon_to_molecular_fraction,
+)
 
 
 class UncorrectedFLIMds:
@@ -98,8 +104,9 @@ class Constant(UncorrectedFLIMds):
         self.coeffs = dict(zip(harmonics, coeffs))
 
     def fourier_image(self, harmonics, mask=None):
-        return np.fromiter((self.coeffs[h] for h in harmonics),
-                           dtype=complex, count=len(harmonics))
+        return np.fromiter(
+            (self.coeffs[h] for h in harmonics), dtype=complex, count=len(harmonics)
+        )
 
 
 class CorrectedFLIMds:
@@ -124,15 +131,21 @@ class CorrectedFLIMds:
 
     def mlt_image(self, harmonics, mask=None):
         """Calculate modulation lifetime image."""
-        return modulation_lifetime(self.phasor_image(harmonics, mask=mask), self.ufds.frequency)
+        return modulation_lifetime(
+            self.phasor_image(harmonics, mask=mask), self.ufds.frequency
+        )
 
     def plt_image(self, harmonics, mask=None):
         """Calculate phase lifetime image."""
-        return phase_lifetime(self.phasor_image(harmonics, mask=mask), self.ufds.frequency)
+        return phase_lifetime(
+            self.phasor_image(harmonics, mask=mask), self.ufds.frequency
+        )
 
     def nlt_image(self, harmonics, mask=None):
         """Calculate normal lifetime image."""
-        return normal_lifetime(self.phasor_image(harmonics, mask=mask), self.ufds.frequency)
+        return normal_lifetime(
+            self.phasor_image(harmonics, mask=mask), self.ufds.frequency
+        )
 
 
 class FRETFLIMds(CorrectedFLIMds):
@@ -153,9 +166,15 @@ class FRETFLIMds(CorrectedFLIMds):
 
     def p_image(self, harmonics, mask=None):
         """Calculate and return a photon fraction image."""
-        return photon_fraction(self.phasor_image(harmonics, mask=mask), self.r_fret, self.r_donor)
+        return photon_fraction(
+            self.phasor_image(harmonics, mask=mask), self.r_fret, self.r_donor
+        )
 
     def m_image(self, harmonics, mask=None):
         """Calculate and return a molecular fraction image."""
-        fret_lifetime, donor_lifetime = normal_lifetime((self.r_fret, self.r_donor), self.ufds.frequency)
-        return photon_to_molecular_fraction(self.p_image(harmonics, mask=mask), fret_lifetime / donor_lifetime)
+        fret_lifetime, donor_lifetime = normal_lifetime(
+            (self.r_fret, self.r_donor), self.ufds.frequency
+        )
+        return photon_to_molecular_fraction(
+            self.p_image(harmonics, mask=mask), fret_lifetime / donor_lifetime
+        )
