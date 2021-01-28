@@ -62,11 +62,14 @@ class UncorrectedFLIMds:
             harmonics = (0, *harmonics)
 
         R = self.fourier_image(harmonics, mask=mask)
+        N, R = R[0].real, R[1:]
+        r = np.zeros_like(R)
+        r = np.divide(R, N, where=N > 0, out=r)
 
         if ret_N:
-            return R[0].real, R[1:] / R[0].real
+            return N, r
         else:
-            return R[1:] / R[0]
+            return r
 
     def mean_phasor(self, harmonics, mask=None):
         """Computes the weighted mean phasor."""
