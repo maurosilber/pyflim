@@ -2,6 +2,8 @@
 
 from enum import Enum
 
+import numpy as np
+
 from . import pq_header, pq_numba as pq
 from ..functions import histogram, fourier_image
 from ...flimds import UncorrectedFLIMds
@@ -61,7 +63,9 @@ class PTU(UncorrectedFLIMds):
         return self.syncrate
 
     def histogram(self, mask=None):
-        return histogram(self.dtime, self.x, self.y, self.num_TAC_bins, mask=mask)
+        hist = histogram(self.dtime, self.x, self.y, self.num_TAC_bins, mask=mask)
+        bins = np.arange(hist.size) * self.resolution
+        return bins, hist
 
     def fourier_image(self, harmonics, mask=None):
         return fourier_image((self.pixY, self.pixX), harmonics, self.dtime, self.x, self.y,

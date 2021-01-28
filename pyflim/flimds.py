@@ -11,7 +11,18 @@ class UncorrectedFLIMds:
     def frequency(self):
         raise NotImplementedError
 
-    def histogram(self):
+    def histogram(self, mask=None):
+        """Compute histogram.
+
+        Parameters
+        ----------
+        mask : array_like
+            Histogram is only computed where mask == True.
+
+        Returns
+        -------
+        bins, hist : tuple of ndarrays
+        """
         raise NotImplementedError
 
     def fourier_image(self, harmonics, mask=None):
