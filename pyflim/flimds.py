@@ -112,9 +112,14 @@ class CorrectedFLIMds:
 
     def phasor_image(self, harmonics, mask=None):
         """Calculate normalized fourier coefficient."""
-        N, R = self.ufds.fourier_image(harmonics, mask=mask, ret_N=True)
-        Nb, Rb = self.bg.fourier_image(harmonics, mask=mask, ret_N=True)
-        irf = self.irf.phasor_image(harmonics, mask=mask, ret_N=True)
+        if harmonics[0] != 0:
+            harmonics = (0, *harmonics)
+
+        R = self.ufds.fourier_image(harmonics, mask=mask)
+        N, R = R[0].real, R[1:]
+        Rb = self.bg.fourier_image(harmonics, mask=mask)
+        Nb, Rb = Rb[0].real, Rb[1:]
+        irf = self.irf.phasor_image(harmonics, mask=mask)
         return (R - Rb) / (N - Nb) / irf
 
     def mlt_image(self, harmonics, mask=None):
