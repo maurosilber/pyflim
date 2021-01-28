@@ -12,7 +12,7 @@ def _phasor(N, R1, R2, **kwargs):
 
 
 def _phasor_covariance(N, R1, R2, N_thres=1):
-    mask = N > 0
+    mask = N > N_thres
     r1 = np.divide(R1, N, where=mask, out=np.zeros(np.broadcast(N, R1).shape, dtype=complex))
     r2 = np.divide(R2, N, where=mask, out=np.zeros(np.broadcast(N, R2).shape, dtype=complex))
     cov = phasor_covariance(N, r1, r2, check_zero=False)
@@ -39,6 +39,7 @@ def pawflim(N, R1, R2, levels, p_value=0.05, N_thres=1, axes=None, mask=None):
         Controls the level of denoising. Default is 0.05.
     N_thres : float, optional
         Pixels where N <= N_thres, automatically pass the test and are binned.
+        Minimum 1.
 
     Returns
     -------
@@ -59,5 +60,7 @@ def pawflim(N, R1, R2, levels, p_value=0.05, N_thres=1, axes=None, mask=None):
     and uncertainty to enable lower photon count in FLIM experiments.
     Methods and applications in fluorescence, 5(2), 024016.
     """
+    if N_thres < 1:
+        raise ValueError
     return _pawflim((N, R1,), levels=levels, p_value=p_value, axes=axes, mask=mask, bin_args=(R2,),
                     kwargs={'N_thres': N_thres})
