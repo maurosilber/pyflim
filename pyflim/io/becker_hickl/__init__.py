@@ -31,6 +31,7 @@ class SPC(UncorrectedFLIMds):
             self.lsm_pixel_start,
             self.pixel_dwell_time,
         )
+        self.dtime -= 1
         self.pixX = self.x.max() + 1
 
     def __init__(self, fname, tac_range):
