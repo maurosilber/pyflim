@@ -20,17 +20,18 @@ class SPC(UncorrectedFLIMds):
             self.resolution,
         )
 
-        self.x, self.y, self.f, self.dtime, self.pixX, self.pixY = interpret_AI(
+        self.x, self.y, self.f, self.dtime, _, self.pixY = interpret_AI(
             channel,
             dtime,
             truetime,
-            self.pixX,
-            self.pixY,
+            0,
+            0,
             self.lsm_frame,
             self.lsm_line_start,
             self.lsm_pixel_start,
             self.pixel_dwell_time,
         )
+        self.pixX = self.x.max() + 1
 
     def __init__(self, fname, tac_range):
         self.filename = fname
@@ -52,8 +53,8 @@ class SPC(UncorrectedFLIMds):
         self.nb_records = self.header["num_records"]
 
         # We will try to guess them unless you reset them in your code using meta-data
-        self.pixX = 0
-        self.pixY = 0
+        # self.pixX = 0
+        # self.pixY = 0
         self.scannertype = "AI"
 
         # These are the default settings in Imspector. It could also be, that no pixel clocks are
