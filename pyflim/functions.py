@@ -74,8 +74,8 @@ def phasor_covariance(N, r1, r2, check_zero=True):
     """
     shape = np.broadcast(N, r1, r2).shape
     cov = np.empty(shape + (2, 2))
-    cov[..., 0, 0] = 1 + r2.real - 2 * r1.real ** 2
-    cov[..., 1, 1] = 1 - r2.real - 2 * r1.imag ** 2
+    cov[..., 0, 0] = 1 + r2.real - 2 * r1.real**2
+    cov[..., 1, 1] = 1 - r2.real - 2 * r1.imag**2
     cov[..., 0, 1] = cov[..., 1, 0] = r2.imag - 2 * r1.real * r1.imag
     cov = np.divide(cov, 2 * N[..., None, None], out=cov, where=N[..., None, None] > 0)
     if check_zero:
@@ -208,8 +208,8 @@ def semicircle_intersection(coeffs):
         )
     else:
         disc = np.sqrt(disc)
-        x = (1 - 2 * a * b + np.array([1, -1]) * disc) / (2 * (a ** 2 + 1))
-        return x + 1j * np.sqrt(x - x ** 2)
+        x = (1 - 2 * a * b + np.array([1, -1]) * disc) / (2 * (a**2 + 1))
+        return x + 1j * np.sqrt(x - x**2)
 
 
 @array_args

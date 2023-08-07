@@ -60,7 +60,6 @@ def _read_events(records, nb_records, syncrate, resolution):
     truetimes = np.empty(nb_records, dtype=np.double)
 
     for n in range(nb_records):
-
         record = records[n]
 
         is_invalid = 0 != _bit_get(record, 31, 1)
