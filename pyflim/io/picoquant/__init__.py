@@ -21,7 +21,7 @@ class PTU(UncorrectedFLIMds):
 
         # Read header
         self.header, self.records_start = pq_header.read_header_ptu(self.file)
-        self.num_records = self.header[u"TTResult_NumberOfRecords"]
+        self.num_records = self.header["TTResult_NumberOfRecords"]
         self.syncrate = self.header["TTResult_SyncRate"]
         self.resolution = self.header["MeasDesc_Resolution"]
         self.pixX = self.header["ImgHdr_PixX"]
